@@ -1,65 +1,63 @@
 from mfrc522 import SimpleMFRC522
 from datetime import datetime
+import RPi.GPIO as GPIO
 from utils import connect_db
 
-# Fungsi untuk autentikasi siswa
+# Function to authenticate the student using RFID
 def authenticate_student():
     reader = SimpleMFRC522()
 
     try:
-        print("Silakan scan kartu RFID siswa...")
-        rfid_code = reader.read()[0]  # Membaca UID kartu RFID
-        
-        # Ambil data siswa berdasarkan RFID code
+        print("Please scan the student's RFID card...")
+        rfid_code = reader.read()[0]  # Read UID from the RFID card
+
+        # Get the student details from the database
         conn = connect_db()
         cursor = conn.cursor()
-        
         cursor.execute("SELECT id, name FROM students WHERE rfid_code = ?", (rfid_code,))
         student = cursor.fetchone()
+        conn.close()
 
         if student:
-            print(f"Siswa: {student[1]} berhasil di-autentikasi.")
-            return student[0]  # Mengembalikan student_id
+            print(f"Student authenticated: {student[1]}")
+            return student[0]  # Return the student ID
         else:
-            print("Siswa tidak ditemukan.")
+            print("Error: Student not found.")
             return None
-        
-        conn.close()
-    
-    finally:
-        reader.cleanup()
 
-# Fungsi untuk memproses peminjaman atau pengembalian buku
+    finally:
+        GPIO.cleanup()
+
+# Function to process book borrowing or returning
 def process_book(student_id):
     reader = SimpleMFRC522()
 
     try:
-        print("Silakan scan stiker RFID buku...")
-        rfid_code = reader.read()[0]  # Membaca UID stiker RFID
+        print("Please scan the book's RFID tag...")
+        rfid_code = reader.read()[0]  # Read UID from the RFID tag
 
-        # Ambil data buku berdasarkan RFID code
+        # Get the book details from the database
         conn = connect_db()
         cursor = conn.cursor()
-
         cursor.execute("SELECT id, title, status FROM books WHERE rfid_code = ?", (rfid_code,))
         book = cursor.fetchone()
 
         if book:
             book_id, title, status = book
 
-            if status == 'tersedia':
-                # Proses peminjaman buku
+            if status == 'available':
+                # Process book borrowing
                 borrow_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 cursor.execute('''
                     INSERT INTO borrowed_books (student_id, book_id, borrow_date)
                     VALUES (?, ?, ?)
                 ''', (student_id, book_id, borrow_date))
 
-                cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
-                print(f"Buku '{title}' berhasil dipinjam oleh siswa dengan ID {student_id}.")
+                cursor.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", (book_id,))
+                print(f"Book '{title}' successfully borrowed by student with ID {student_id}.")
             
             else:
-                # Proses pengembalian buku
+                # Process book returning
                 return_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 cursor.execute('''
                     UPDATE borrowed_books
@@ -67,27 +65,33 @@ def process_book(student_id):
                     WHERE book_id = ? AND student_id = ? AND return_date IS NULL
                 ''', (return_date, book_id, student_id))
 
-                cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
-                print(f"Buku '{title}' berhasil dikembalikan oleh siswa dengan ID {student_id}.")
-
-        else:
-            print("Buku tidak ditemukan.")
+                cursor.execute("UPDATE books SET status = 'available' WHERE id = ?", (book_id,))
+                print(f"Book '{title}' successfully returned by student with ID {student_id}.")
         
+        else:
+            print("Error: Book not found.")
+
         conn.commit()
         conn.close()
 
     finally:
-        reader.cleanup()
+        GPIO.cleanup()
 
-# Menu utama peminjaman dan pengembalian
+# Main function for borrowing/returning books
 def main():
     while True:
-        print("\n1. Peminjaman atau Pengembalian Buku")
-        print("2. Keluar")
-        choice = input("Pilih opsi: ")
+        print("\n1. Borrow or Return a Book")
+        print("2. Exit")
+        choice = input("Choose an option: ")
 
         if choice == '1':
             student_id = authenticate_student()
-
             if student_id:
-                process
+                process_book(student_id)
+        elif choice == '2':
+            break
+        else:
+            print("Invalid choice, please try again.")
+
+if __name__ == '__main__':
+    main()
