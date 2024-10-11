@@ -1,15 +1,15 @@
 import sqlite3
 
-# Fungsi untuk membuat koneksi ke database
+# Function to connect to the database
 def connect_db():
-    return sqlite3.connect('database/library.db')
+    return sqlite3.connect('library.db')
 
-# Fungsi untuk membuat database dan tabel jika belum ada
+# Function to create the database and tables if they do not exist
 def create_database():
     conn = connect_db()
     cursor = conn.cursor()
 
-    # Membuat tabel students (siswa)
+    # Create the students table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS students (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,18 +18,18 @@ def create_database():
     )
     ''')
 
-    # Membuat tabel books (buku)
+    # Create the books table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         author TEXT NOT NULL,
         rfid_code TEXT UNIQUE NOT NULL,
-        status TEXT DEFAULT 'tersedia'
+        status TEXT DEFAULT 'available'
     )
     ''')
 
-    # Membuat tabel borrowed_books (catatan peminjaman)
+    # Create the borrowed_books table to log borrowing records
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS borrowed_books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,4 +45,4 @@ def create_database():
     conn.commit()
     conn.close()
 
-    print("Database dan tabel berhasil dibuat.")
+    print("Database and tables created successfully.")
