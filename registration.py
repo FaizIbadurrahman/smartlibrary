@@ -1,16 +1,40 @@
 from mfrc522 import SimpleMFRC522
+import RPi.GPIO as GPIO
 from utils import create_database, connect_db
 
-# Fungsi untuk mendaftarkan siswa
+# Function to check if an RFID code exists in the students table
+def rfid_exists_in_students(rfid_code):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM students WHERE rfid_code = ?', (rfid_code,))
+    student = cursor.fetchone()
+    conn.close()
+    return student is not None
+
+# Function to check if an RFID code exists in the books table
+def rfid_exists_in_books(rfid_code):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM books WHERE rfid_code = ?', (rfid_code,))
+    book = cursor.fetchone()
+    conn.close()
+    return book is not None
+
+# Function to register a student
 def register_student():
     reader = SimpleMFRC522()
-    
+
     try:
-        print("Silakan scan kartu RFID untuk siswa...")
-        rfid_code = reader.read()[0]  # Membaca UID kartu RFID
-        name = input("Masukkan nama siswa: ")  # Memasukkan nama siswa
-        
-        # Menyimpan data siswa di database
+        print("Please scan the RFID card for the student...")
+        rfid_code = reader.read()[0]  # Read UID from the RFID card
+        name = input("Enter the student's name: ")
+
+        # Check if RFID code already exists in students
+        if rfid_exists_in_students(rfid_code):
+            print(f"Error: RFID code {rfid_code} is already registered for a student.")
+            return
+
+        # Save student data in the database
         conn = connect_db()
         cursor = conn.cursor()
         
@@ -21,22 +45,27 @@ def register_student():
         
         conn.commit()
         conn.close()
-        print(f"Siswa {name} berhasil didaftarkan dengan RFID {rfid_code}.")
+        print(f"Student '{name}' registered successfully with RFID {rfid_code}.")
     
     finally:
-        reader.cleanup()
+        GPIO.cleanup()  # Ensure GPIO resources are released properly
 
-# Fungsi untuk mendaftarkan buku
+# Function to register a book
 def register_book():
     reader = SimpleMFRC522()
 
     try:
-        print("Silakan scan stiker RFID untuk buku...")
-        rfid_code = reader.read()[0]  # Membaca UID stiker RFID
-        title = input("Masukkan judul buku: ")  # Memasukkan judul buku
-        author = input("Masukkan nama penulis: ")  # Memasukkan nama penulis
-        
-        # Menyimpan data buku di database
+        print("Please scan the RFID tag for the book...")
+        rfid_code = reader.read()[0]  # Read UID from the RFID tag
+        title = input("Enter the book title: ")  # Enter the book title
+        author = input("Enter the author's name: ")  # Enter the author's name
+
+        # Check if RFID code already exists in books
+        if rfid_exists_in_books(rfid_code):
+            print(f"Error: RFID code {rfid_code} is already registered for a book.")
+            return
+
+        # Save book data in the database
         conn = connect_db()
         cursor = conn.cursor()
         
@@ -47,20 +76,20 @@ def register_book():
         
         conn.commit()
         conn.close()
-        print(f"Buku '{title}' berhasil didaftarkan dengan RFID {rfid_code}.")
+        print(f"Book '{title}' by {author} registered successfully with RFID {rfid_code}.")
     
     finally:
-        reader.cleanup()
+        GPIO.cleanup()  # Ensure GPIO resources are released properly
 
-# Menu utama pendaftaran
+# Main function to handle user input
 def main():
-    create_database()  # Membuat database jika belum ada
+    create_database()  # Ensure the database and tables are created
     
     while True:
-        print("\n1. Daftarkan Siswa")
-        print("2. Daftarkan Buku")
-        print("3. Keluar")
-        choice = input("Pilih opsi: ")
+        print("\n1. Register Student")
+        print("2. Register Book")
+        print("3. Exit")
+        choice = input("Choose an option: ")
 
         if choice == '1':
             register_student()
@@ -69,7 +98,7 @@ def main():
         elif choice == '3':
             break
         else:
-            print("Pilihan tidak valid.")
+            print("Invalid choice, please try again.")
 
 if __name__ == '__main__':
     main()
