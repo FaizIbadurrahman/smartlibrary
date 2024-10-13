@@ -30,7 +30,7 @@ def wait_until_card_removed():
                 card_present = False
             else:
                 print("Card still detected. Waiting for removal...")
-            time.sleep(0.5)  # Beri jeda waktu sebelum membaca lagi
+            time.sleep(1)  # Beri jeda waktu sebelum membaca lagi
         except Exception as e:
             print(f"Error while waiting for card removal: {e}")
             break
