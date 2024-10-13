@@ -7,7 +7,7 @@ from utils import connect_db
 reader = SimpleMFRC522()
 
 def read_rfid_card():
-    """Membaca RFID card dan mengembalikan UID."""
+    """Membaca kartu RFID dan mengembalikan UID."""
     try:
         print("Please scan your RFID card...")
         rfid_code = reader.read()[0]  # Baca UID kartu siswa
@@ -21,13 +21,16 @@ def read_rfid_card():
 def wait_until_card_removed():
     """Menunggu sampai kartu RFID dilepas."""
     print("Please remove your RFID card...")
-    while True:
+    card_present = True
+    while card_present:
         try:
-            id, _ = reader.read_no_block()  # Membaca tanpa blokir
-            if id is None:
+            id, _ = reader.read_no_block()  # Membaca tanpa blocking
+            if id is None:  # Jika tidak ada kartu terbaca
                 print("Card removed.")
-                break  # Keluar dari loop jika kartu tidak terbaca
-            time.sleep(0.5)  # Tunggu sebentar sebelum membaca lagi
+                card_present = False
+            else:
+                print("Card still detected. Waiting for removal...")
+            time.sleep(0.5)  # Beri jeda waktu sebelum membaca lagi
         except Exception as e:
             print(f"Error while waiting for card removal: {e}")
             break
