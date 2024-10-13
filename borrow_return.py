@@ -10,7 +10,7 @@ def read_rfid_card():
     """Membaca kartu RFID dan mengembalikan UID."""
     try:
         print("Please scan your RFID card...")
-        rfid_code = reader.read()[0]  # Baca UID kartu siswa
+        rfid_code, text = reader.read()  # Baca UID kartu siswa
         return rfid_code
     except Exception as e:
         print(f"Error reading RFID: {e}")
@@ -19,18 +19,34 @@ def read_rfid_card():
         GPIO.cleanup()
 
 def wait_until_card_removed():
-    """Menunggu sampai kartu RFID dilepas."""
-    print("Please remove your RFID card...")
-    card_present = True
-    while card_present:
+    """Menunggu sampai kartu RFID dilepas dengan deteksi yang lebih stabil."""
+    print("Waiting for card removal...")
+    
+    no_card_count = 0  # Hitung berapa kali tidak ada kartu terdeteksi berturut-turut
+    threshold = 5  # Ambang batas berapa kali pembacaan kosong berturut-turut sebelum kita anggap kartu dilepas
+    
+    while True:
         try:
-            id, _ = reader.read_no_block()  # Membaca tanpa blocking
-            if id is None:  # Jika tidak ada kartu terbaca
-                print("Card removed.")
-                card_present = False
+            # Coba baca kartu secara non-blocking
+            rfid_code, text = reader.read_no_block()
+
+            if rfid_code is None:
+                # Jika tidak ada kartu terbaca, tambahkan hitungan tidak ada kartu
+                no_card_count += 1
+                print(f"No card detected, count: {no_card_count}")
             else:
+                # Jika kartu terbaca kembali, reset hitungan
+                no_card_count = 0
                 print("Card still detected. Waiting for removal...")
-            time.sleep(1)  # Beri jeda waktu sebelum membaca lagi
+
+            # Jika kartu tidak terbaca selama 'threshold' kali berturut-turut, keluar dari loop
+            if no_card_count >= threshold:
+                print("Card removed.")
+                break
+
+            # Jeda untuk memastikan tidak terlalu cepat membaca ulang
+            time.sleep(1)
+
         except Exception as e:
             print(f"Error while waiting for card removal: {e}")
             break
