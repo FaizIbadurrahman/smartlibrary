@@ -23,7 +23,7 @@ def wait_until_card_removed():
     print("Waiting for card removal...")
     
     no_card_count = 0  # Hitung berapa kali tidak ada kartu terdeteksi berturut-turut
-    threshold = 5  # Ambang batas berapa kali pembacaan kosong berturut-turut sebelum kita anggap kartu dilepas
+    threshold = 3  # Ambang batas berapa kali pembacaan kosong berturut-turut sebelum kita anggap kartu dilepas
     
     while True:
         try:
@@ -45,7 +45,7 @@ def wait_until_card_removed():
                 break
 
             # Jeda untuk memastikan tidak terlalu cepat membaca ulang
-            time.sleep(1)
+            time.sleep(0.5)
 
         except Exception as e:
             print(f"Error while waiting for card removal: {e}")
