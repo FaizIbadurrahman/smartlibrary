@@ -4,8 +4,25 @@ import time
 from utils import connect_db
 from RPLCD.i2c import CharLCD
 
+# Inisialisasi LCD (ganti 0x27 dengan alamat I2C LCD Anda)
+lcd = CharLCD('PCF8574', 0x27)
+
 # Inisialisasi RFID Reader
 reader = SimpleMFRC522()
+
+def clear_lcd():
+    """Membersihkan layar LCD."""
+    lcd.clear()
+
+def display_lcd_message(line1, line2="", duration=2):
+    """Menampilkan pesan di LCD 16x2."""
+    clear_lcd()
+    lcd.write_string(line1)
+    if line2:
+        lcd.crlf()  # Pindah ke baris kedua
+        lcd.write_string(line2)
+    time.sleep(duration)  # Tampilkan pesan selama beberapa detik
+    clear_lcd()
 
 def read_rfid_card():
     """Membaca kartu RFID dan mengembalikan UID."""
@@ -18,8 +35,6 @@ def read_rfid_card():
         print(f"Error reading RFID: {e}")
         display_lcd_message("Error Reading Card")
         return None
-    finally:
-        GPIO.cleanup()
 
 def wait_until_card_removed():
     """Menunggu sampai kartu RFID dilepas dengan deteksi yang lebih stabil."""
@@ -43,11 +58,12 @@ def wait_until_card_removed():
                 # Jika kartu terbaca kembali, reset hitungan
                 no_card_count = 0
                 print("Card still detected. Waiting for removal...")
-		display_lcd_message("Processing...")
+                display_lcd_message("Card Still Detected")
 
             # Jika kartu tidak terbaca selama 'threshold' kali berturut-turut, keluar dari loop
             if no_card_count >= threshold:
                 print("Card removed.")
+                display_lcd_message("Card Removed")
                 break
 
             # Jeda untuk memastikan tidak terlalu cepat membaca ulang
@@ -55,13 +71,14 @@ def wait_until_card_removed():
 
         except Exception as e:
             print(f"Error while waiting for card removal: {e}")
+            display_lcd_message("Error Removing Card")
             break
 
 def process_borrow_return(student_id):
     """Proses peminjaman atau pengembalian buku."""
     try:
         print("Please scan the book's RFID tag...")
-        display_lcd_message("Scanning the Book")
+        display_lcd_message("Scan the Book")
         rfid_code = reader.read()[0]  # Membaca UID buku
 
         conn = connect_db()
@@ -84,7 +101,7 @@ def process_borrow_return(student_id):
                 cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
                 conn.commit()
                 print(f"Book '{title}' borrowed successfully.")
-		display_lcd_message("Borrowed Successful")
+                display_lcd_message("Borrow Successful", f"Book: {title}")
             elif status == 'dipinjam':
                 # Proses pengembalian buku
                 return_date = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -95,18 +112,19 @@ def process_borrow_return(student_id):
                 cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
                 conn.commit()
                 print(f"Book '{title}' returned successfully.")
-		display_lcd_message("Return successful")
+                display_lcd_message("Return Successful", f"Book: {title}")
             else:
                 print(f"Error: Unknown book status '{status}'.")
-                display_lcd_message("error")
+                display_lcd_message("Error: Unknown", "Book Status")
         else:
             print("Error: Book not found.")
-	    display_lcd_message("Error")
+            display_lcd_message("Error: Book", "Not Found")
 
         conn.close()
 
-    finally:
-        GPIO.cleanup()
+    except Exception as e:
+        print(f"Error during borrow/return process: {e}")
+        display_lcd_message("Error", "Borrow/Return")
 
 def borrow_return():
     """Fungsi utama untuk proses peminjaman/pengembalian buku."""
@@ -115,7 +133,7 @@ def borrow_return():
     
     if student_rfid is None:
         print("Error: No card detected.")
-	display_lcd_message("No Card Detected")
+        display_lcd_message("No Card Detected")
         return
 
     # Verifikasi apakah siswa terdaftar di database
@@ -128,7 +146,7 @@ def borrow_return():
     if student:
         student_id, student_name = student
         print(f"Authenticated student: {student_name}")
-	display_lcd_message(f"Authenticated student: {student_name}")
+        display_lcd_message("Student Verified", student_name)
 
         # Tunggu hingga kartu siswa dilepas
         wait_until_card_removed()
@@ -137,9 +155,11 @@ def borrow_return():
         process_borrow_return(student_id)
     else:
         print("Error: Student not found.")
-	display_lcd_message("Student Not Found")
-
+        display_lcd_message("Student Not Found")
 
 
 if __name__ == '__main__':
-    borrow_return()
+    try:
+        borrow_return()
+    finally:
+        GPIO.cleanup()  # Bersihkan GPIO saat program selesai
