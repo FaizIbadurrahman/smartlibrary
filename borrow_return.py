@@ -2,6 +2,7 @@ from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 import time
 from utils import connect_db
+from RPLCD.i2c import CharLCD
 
 # Inisialisasi RFID Reader
 reader = SimpleMFRC522()
@@ -10,10 +11,12 @@ def read_rfid_card():
     """Membaca kartu RFID dan mengembalikan UID."""
     try:
         print("Please scan your RFID card...")
+        display_lcd_message("Scan your card")
         rfid_code, text = reader.read()  # Baca UID kartu siswa
         return rfid_code
     except Exception as e:
         print(f"Error reading RFID: {e}")
+        display_lcd_message("Error Reading Card")
         return None
     finally:
         GPIO.cleanup()
@@ -21,6 +24,7 @@ def read_rfid_card():
 def wait_until_card_removed():
     """Menunggu sampai kartu RFID dilepas dengan deteksi yang lebih stabil."""
     print("Waiting for card removal...")
+    display_lcd_message("Please Remove Card")
     
     no_card_count = 0  # Hitung berapa kali tidak ada kartu terdeteksi berturut-turut
     threshold = 3  # Ambang batas berapa kali pembacaan kosong berturut-turut sebelum kita anggap kartu dilepas
@@ -34,10 +38,12 @@ def wait_until_card_removed():
                 # Jika tidak ada kartu terbaca, tambahkan hitungan tidak ada kartu
                 no_card_count += 1
                 print(f"No card detected, count: {no_card_count}")
+                display_lcd_message("Processing...")
             else:
                 # Jika kartu terbaca kembali, reset hitungan
                 no_card_count = 0
                 print("Card still detected. Waiting for removal...")
+		display_lcd_message("Processing...")
 
             # Jika kartu tidak terbaca selama 'threshold' kali berturut-turut, keluar dari loop
             if no_card_count >= threshold:
@@ -55,6 +61,7 @@ def process_borrow_return(student_id):
     """Proses peminjaman atau pengembalian buku."""
     try:
         print("Please scan the book's RFID tag...")
+        display_lcd_message("Scanning the Book")
         rfid_code = reader.read()[0]  # Membaca UID buku
 
         conn = connect_db()
@@ -77,6 +84,7 @@ def process_borrow_return(student_id):
                 cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
                 conn.commit()
                 print(f"Book '{title}' borrowed successfully.")
+		display_lcd_message("Borrowed Successful")
             elif status == 'dipinjam':
                 # Proses pengembalian buku
                 return_date = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -87,10 +95,13 @@ def process_borrow_return(student_id):
                 cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
                 conn.commit()
                 print(f"Book '{title}' returned successfully.")
+		display_lcd_message("Return successful")
             else:
                 print(f"Error: Unknown book status '{status}'.")
+                display_lcd_message("error")
         else:
             print("Error: Book not found.")
+	    display_lcd_message("Error")
 
         conn.close()
 
@@ -104,6 +115,7 @@ def borrow_return():
     
     if student_rfid is None:
         print("Error: No card detected.")
+	display_lcd_message("No Card Detected")
         return
 
     # Verifikasi apakah siswa terdaftar di database
@@ -116,6 +128,7 @@ def borrow_return():
     if student:
         student_id, student_name = student
         print(f"Authenticated student: {student_name}")
+	display_lcd_message(f"Authenticated student: {student_name}")
 
         # Tunggu hingga kartu siswa dilepas
         wait_until_card_removed()
@@ -124,6 +137,9 @@ def borrow_return():
         process_borrow_return(student_id)
     else:
         print("Error: Student not found.")
+	display_lcd_message("Student Not Found")
+
+
 
 if __name__ == '__main__':
     borrow_return()
