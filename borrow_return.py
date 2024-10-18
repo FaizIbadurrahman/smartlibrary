@@ -4,7 +4,7 @@ import time
 from utils import connect_db
 from RPLCD.i2c import CharLCD
 
-# Inisialisasi LCD (ganti 0x27 dengan alamat I2C LCD Anda)
+# Inisialisasi LCD 16x2 dengan alamat I2C (misal: 0x27)
 lcd = CharLCD('PCF8574', 0x27)
 
 # Inisialisasi RFID Reader
@@ -14,15 +14,13 @@ def clear_lcd():
     """Membersihkan layar LCD."""
     lcd.clear()
 
-def display_lcd_message(line1, line2="", duration=2):
-    """Menampilkan pesan di LCD 16x2."""
-    clear_lcd()
-    lcd.write_string(line1)
+def display_lcd_message(line1, line2=""):
+    """Menampilkan pesan di LCD 16x2. Pesan tetap ada sampai ada perintah baru."""
+    lcd.clear()  # Membersihkan layar LCD sebelum menampilkan pesan baru
+    lcd.write_string(line1)  # Menampilkan pesan pada baris pertama
     if line2:
         lcd.crlf()  # Pindah ke baris kedua
-        lcd.write_string(line2)
-    time.sleep(duration)  # Tampilkan pesan selama beberapa detik
-    clear_lcd()
+        lcd.write_string(line2)  # Menampilkan pesan pada baris kedua
 
 def read_rfid_card():
     """Membaca kartu RFID dan mengembalikan UID."""
@@ -53,12 +51,10 @@ def wait_until_card_removed():
                 # Jika tidak ada kartu terbaca, tambahkan hitungan tidak ada kartu
                 no_card_count += 1
                 print(f"No card detected, count: {no_card_count}")
-                display_lcd_message("Processing...")
             else:
                 # Jika kartu terbaca kembali, reset hitungan
                 no_card_count = 0
                 print("Card still detected. Waiting for removal...")
-                display_lcd_message("Card Still Detected")
 
             # Jika kartu tidak terbaca selama 'threshold' kali berturut-turut, keluar dari loop
             if no_card_count >= threshold:
