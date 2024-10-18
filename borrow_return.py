@@ -14,73 +14,73 @@ def clear_lcd():
     """Membersihkan layar LCD."""
     lcd.clear()
 
+def center_text(text, width=16):
+    """Menyusun teks agar ditampilkan di tengah layar LCD 16x2."""
+    if len(text) < width:
+        padding = (width - len(text)) // 2
+        return ' ' * padding + text + ' ' * padding
+    return text[:width]  # Jika lebih dari 16 karakter, potong
+
 def display_lcd_message(line1, line2=""):
-    """Menampilkan pesan di LCD 16x2. Pesan tetap ada sampai ada perintah baru."""
-    lcd.clear()  # Membersihkan layar LCD sebelum menampilkan pesan baru
-    lcd.write_string(line1)  # Menampilkan pesan pada baris pertama
+    """Menampilkan pesan di LCD 16x2 dengan teks yang ditengah."""
+    lcd.clear()  # Bersihkan layar
+    lcd.write_string(center_text(line1))  # Tampilkan baris pertama ditengah
     if line2:
         lcd.crlf()  # Pindah ke baris kedua
-        lcd.write_string(line2)  # Menampilkan pesan pada baris kedua
+        lcd.write_string(center_text(line2))  # Tampilkan baris kedua ditengah
 
 def read_rfid_card():
     """Membaca kartu RFID dan mengembalikan UID."""
     try:
-        print("Please scan your RFID card...")
-        display_lcd_message("Scan your card")
+        print("Awaiting RFID input...")
+        display_lcd_message("Scan your ID")
         rfid_code, text = reader.read()  # Baca UID kartu siswa
         return rfid_code
     except Exception as e:
         print(f"Error reading RFID: {e}")
-        display_lcd_message("Error Reading Card")
+        display_lcd_message("Error Reading", "Card Data")
         return None
 
 def wait_until_card_removed():
     """Menunggu sampai kartu RFID dilepas dengan deteksi yang lebih stabil."""
-    print("Waiting for card removal...")
-    display_lcd_message("Please Remove Card")
+    print("Please remove the card...")
+    display_lcd_message("Remove Card")
     
-    no_card_count = 0  # Hitung berapa kali tidak ada kartu terdeteksi berturut-turut
-    threshold = 3  # Ambang batas berapa kali pembacaan kosong berturut-turut sebelum kita anggap kartu dilepas
+    no_card_count = 0
+    threshold = 3  # Jika 3 kali tidak ada kartu, anggap kartu dilepas
     
     while True:
         try:
-            # Coba baca kartu secara non-blocking
             rfid_code, text = reader.read_no_block()
-
             if rfid_code is None:
-                # Jika tidak ada kartu terbaca, tambahkan hitungan tidak ada kartu
                 no_card_count += 1
                 print(f"No card detected, count: {no_card_count}")
             else:
-                # Jika kartu terbaca kembali, reset hitungan
                 no_card_count = 0
-                print("Card still detected. Waiting for removal...")
-
-            # Jika kartu tidak terbaca selama 'threshold' kali berturut-turut, keluar dari loop
+                print("Card still detected.")
+            
             if no_card_count >= threshold:
                 print("Card removed.")
                 display_lcd_message("Card Removed")
                 break
-
-            # Jeda untuk memastikan tidak terlalu cepat membaca ulang
             time.sleep(0.5)
 
         except Exception as e:
             print(f"Error while waiting for card removal: {e}")
-            display_lcd_message("Error Removing Card")
+            display_lcd_message("Error", "Card Removal")
             break
 
 def process_borrow_return(student_id):
     """Proses peminjaman atau pengembalian buku."""
     try:
         print("Please scan the book's RFID tag...")
-        display_lcd_message("Scan the Book")
+        display_lcd_message("Scan Book ID")
         rfid_code = reader.read()[0]  # Membaca UID buku
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Cek status buku di database berdasarkan RFID tag
+        # Cek status buku di database
         cursor.execute("SELECT id, title, status FROM books WHERE rfid_code = ?", (rfid_code,))
         book = cursor.fetchone()
 
@@ -88,7 +88,6 @@ def process_borrow_return(student_id):
             book_id, title, status = book
 
             if status == 'tersedia':
-                # Proses peminjaman buku
                 borrow_date = time.strftime("%Y-%m-%d %H:%M:%S")
                 cursor.execute('''
                     INSERT INTO borrowed_books (student_id, book_id, borrow_date)
@@ -96,10 +95,8 @@ def process_borrow_return(student_id):
                 ''', (student_id, book_id, borrow_date))
                 cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
                 conn.commit()
-                print(f"Book '{title}' borrowed successfully.")
-                display_lcd_message("Borrow Successful", f"Book: {title}")
+                display_lcd_message("Borrow Success", f"Book: {title}")
             elif status == 'dipinjam':
-                # Proses pengembalian buku
                 return_date = time.strftime("%Y-%m-%d %H:%M:%S")
                 cursor.execute('''
                     UPDATE borrowed_books SET return_date = ?
@@ -107,14 +104,13 @@ def process_borrow_return(student_id):
                 ''', (return_date, book_id, student_id))
                 cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
                 conn.commit()
-                print(f"Book '{title}' returned successfully.")
-                display_lcd_message("Return Successful", f"Book: {title}")
+                display_lcd_message("Return Success", f"Book: {title}")
             else:
                 print(f"Error: Unknown book status '{status}'.")
-                display_lcd_message("Error: Unknown", "Book Status")
+                display_lcd_message("Error", "Invalid Status")
         else:
             print("Error: Book not found.")
-            display_lcd_message("Error: Book", "Not Found")
+            display_lcd_message("Error", "Book Not Found")
 
         conn.close()
 
@@ -124,15 +120,13 @@ def process_borrow_return(student_id):
 
 def borrow_return():
     """Fungsi utama untuk proses peminjaman/pengembalian buku."""
-    # Baca kartu RFID siswa
     student_rfid = read_rfid_card()
     
     if student_rfid is None:
         print("Error: No card detected.")
-        display_lcd_message("No Card Detected")
+        display_lcd_message("Error", "No Card Detected")
         return
 
-    # Verifikasi apakah siswa terdaftar di database
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("SELECT id, name FROM students WHERE rfid_code = ?", (student_rfid,))
@@ -141,18 +135,15 @@ def borrow_return():
 
     if student:
         student_id, student_name = student
-        print(f"Authenticated student: {student_name}")
+        print(f"Student verified: {student_name}")
         display_lcd_message("Student Verified", student_name)
 
-        # Tunggu hingga kartu siswa dilepas
         wait_until_card_removed()
 
-        # Minta siswa untuk scan buku
         process_borrow_return(student_id)
     else:
         print("Error: Student not found.")
-        display_lcd_message("Student Not Found")
-
+        display_lcd_message("Error", "Student Not Found")
 
 if __name__ == '__main__':
     try:
