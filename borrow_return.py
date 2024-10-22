@@ -147,4 +147,5 @@ if __name__ == '__main__':
     try:
         borrow_return()
     finally:
-        GPIO.cleanup()  # Bersihkan GPIO saat program selesai
+        GPIO.cleanup()
+        lcd.clear()# Bersihkan GPIO dan LCD saat program selesai
