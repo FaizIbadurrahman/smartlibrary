@@ -44,7 +44,7 @@ def read_rfid_card():
 def wait_until_card_removed():
     """Menunggu sampai kartu RFID dilepas dengan deteksi yang lebih stabil."""
     print("Please remove the card...")
-    display_lcd_message("Remove Card")
+    display_lcd_message("Please","Remove Card")
     
     no_card_count = 0
     threshold = 3  # Jika 3 kali tidak ada kartu, anggap kartu dilepas
@@ -61,7 +61,6 @@ def wait_until_card_removed():
             
             if no_card_count >= threshold:
                 print("Card removed.")
-                display_lcd_message("Card Removed")
                 break
             time.sleep(0.5)
 
@@ -136,7 +135,7 @@ def borrow_return():
     if student:
         student_id, student_name = student
         print(f"Student verified: {student_name}")
-        display_lcd_message("Student Verified", student_name)
+        # display_lcd_message("Student Verified", student_name)
 
         wait_until_card_removed()
 
