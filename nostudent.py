@@ -30,23 +30,20 @@ def display_lcd_message(line1, line2=""):
         lcd.write_string(center_text(line2))  # Tampilkan baris kedua ditengah
 
 def scroll_text(line, text, delay=0.3):
-    """Scrolling text jika panjangnya lebih dari 16 karakter."""
-    lcd.clear()
+    """Scrolling text pada baris tertentu jika panjangnya lebih dari 16 karakter."""
+    lcd.cursor_pos = (line, 0)
     
     # Jika teks lebih pendek dari atau sama dengan 16 karakter, tampilkan langsung
     if len(text) <= 16:
-        lcd.cursor_pos = (line, 0)
         lcd.write_string(text)
         return
 
     # Scrolling jika teks lebih dari 16 karakter
     # Tampilkan teks pertama (16 karakter pertama) langsung
-    lcd.cursor_pos = (line, 0)
     lcd.write_string(text[:16])
-    
-    # Mulai geser teks setelah menampilkan teks pertama
     time.sleep(delay)
     
+    # Mulai scroll teks
     for i in range(1, len(text) - 15):  # Loop untuk scroll
         lcd.cursor_pos = (line, 0)  # Set baris yang akan di-scroll
         lcd.write_string(text[i:i + 16])  # Geser window teks sepanjang 16 karakter
@@ -92,8 +89,9 @@ def process_borrow_return():
                 ''', (book_id, borrow_date))
                 cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
                 conn.commit()
-                # Scroll jika judul buku lebih dari 16 karakter
-                scroll_text(1, f"Borrowed: {title}")
+                # Tampilkan "Borrow Success" di line 1 dan judul buku di line 2 dengan scrolling
+                display_lcd_message("Borrow Success")
+                scroll_text(1, title)  # Scroll judul buku di baris kedua
             elif status == 'dipinjam':
                 # Proses pengembalian buku
                 return_date = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -103,11 +101,14 @@ def process_borrow_return():
                 ''', (return_date, book_id))
                 cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
                 conn.commit()
-                # Scroll jika judul buku lebih dari 16 karakter
-                scroll_text(1, f"Returned: {title}")
+                # Tampilkan "Return Success" di line 1 dan judul buku di line 2 dengan scrolling
+                display_lcd_message("Return Success")
+                scroll_text(1, title)  # Scroll judul buku di baris kedua
             else:
+                print(f"Error: Unknown book status '{status}'.")
                 display_lcd_message("Error", "Invalid Status")
         else:
+            print("Error: Book not found.")
             display_lcd_message("Error", "Book Not Found")
 
         conn.close()
@@ -116,10 +117,14 @@ def process_borrow_return():
         print(f"Error during borrow/return process: {e}")
         display_lcd_message("Error", "Borrow/Return")
 
-if __name__ == '__main__':
+def borrow_return():
+    """Fungsi utama untuk proses peminjaman/pengembalian buku."""
     try:
-        while True:  # Loop untuk terus mendeteksi RFID buku
+        while True:  # Loop untuk terus menerima buku baru
             process_borrow_return()
-            time.sleep(2)  # Beri jeda waktu sebentar sebelum mendeteksi buku berikutnya
+            time.sleep(2)  # Beri jeda waktu sebentar sebelum pengguna berikutnya
     finally:
         GPIO.cleanup()  # Bersihkan GPIO saat program selesai
+
+if __name__ == '__main__':
+    borrow_return()
