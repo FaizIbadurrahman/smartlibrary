@@ -29,6 +29,29 @@ def display_lcd_message(line1, line2=""):
         lcd.crlf()  # Pindah ke baris kedua
         lcd.write_string(center_text(line2))  # Tampilkan baris kedua ditengah
 
+def scroll_text(line, text, delay=0.3):
+    """Scrolling text jika panjangnya lebih dari 16 karakter."""
+    lcd.clear()
+    
+    # Jika teks lebih pendek dari atau sama dengan 16 karakter, tampilkan langsung
+    if len(text) <= 16:
+        lcd.cursor_pos = (line, 0)
+        lcd.write_string(text)
+        return
+
+    # Scrolling jika teks lebih dari 16 karakter
+    # Tampilkan teks pertama (16 karakter pertama) langsung
+    lcd.cursor_pos = (line, 0)
+    lcd.write_string(text[:16])
+    
+    # Mulai geser teks setelah menampilkan teks pertama
+    time.sleep(delay)
+    
+    for i in range(1, len(text) - 15):  # Loop untuk scroll
+        lcd.cursor_pos = (line, 0)  # Set baris yang akan di-scroll
+        lcd.write_string(text[i:i + 16])  # Geser window teks sepanjang 16 karakter
+        time.sleep(delay)  # Delay untuk memberikan efek scroll
+
 def read_rfid_card():
     """Membaca kartu RFID dan mengembalikan UID."""
     try:
@@ -94,7 +117,11 @@ def process_borrow_return(student_id, student_name):
                 ''', (student_id, book_id, borrow_date))
                 cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
                 conn.commit()
-                display_lcd_message("Borrow Success", f"{title[:13]}")
+                # Jika judul lebih dari 16 karakter, lakukan scroll
+                if len(title) > 16:
+                    scroll_text(1, f"Borrowed: {title}")
+                else:
+                    display_lcd_message("Borrow Success", title)
             elif status == 'dipinjam':
                 return_date = time.strftime("%Y-%m-%d %H:%M:%S")
                 cursor.execute('''
@@ -103,7 +130,11 @@ def process_borrow_return(student_id, student_name):
                 ''', (return_date, book_id, student_id))
                 cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
                 conn.commit()
-                display_lcd_message("Return Success", f"{title[:13]}")
+                # Jika judul lebih dari 16 karakter, lakukan scroll
+                if len(title) > 16:
+                    scroll_text(1, f"Returned: {title}")
+                else:
+                    display_lcd_message("Return Success", title)
             else:
                 print(f"Error: Unknown book status '{status}'.")
                 display_lcd_message("Error", "Invalid Status")
@@ -135,7 +166,6 @@ def borrow_return():
     if student:
         student_id, student_name = student
         print(f"Student verified: {student_name}")
-        # display_lcd_message("Student Verified", student_name)
 
         wait_until_card_removed()
 
