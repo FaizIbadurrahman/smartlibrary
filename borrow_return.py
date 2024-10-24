@@ -30,23 +30,20 @@ def display_lcd_message(line1, line2=""):
         lcd.write_string(center_text(line2))  # Tampilkan baris kedua ditengah
 
 def scroll_text(line, text, delay=0.3):
-    """Scrolling text jika panjangnya lebih dari 16 karakter."""
-    lcd.clear()
+    """Scrolling text pada baris tertentu jika panjangnya lebih dari 16 karakter."""
+    lcd.cursor_pos = (line, 0)
     
     # Jika teks lebih pendek dari atau sama dengan 16 karakter, tampilkan langsung
     if len(text) <= 16:
-        lcd.cursor_pos = (line, 0)
         lcd.write_string(text)
         return
 
     # Scrolling jika teks lebih dari 16 karakter
     # Tampilkan teks pertama (16 karakter pertama) langsung
-    lcd.cursor_pos = (line, 0)
     lcd.write_string(text[:16])
-    
-    # Mulai geser teks setelah menampilkan teks pertama
     time.sleep(delay)
     
+    # Mulai scroll teks
     for i in range(1, len(text) - 15):  # Loop untuk scroll
         lcd.cursor_pos = (line, 0)  # Set baris yang akan di-scroll
         lcd.write_string(text[i:i + 16])  # Geser window teks sepanjang 16 karakter
@@ -84,7 +81,7 @@ def wait_until_card_removed():
             
             if no_card_count >= threshold:
                 print("Card removed.")
-                display_lcd_message("Scanning...")
+                display_lcd_message("Card Removed")
                 break
             time.sleep(0.5)
 
@@ -119,9 +116,10 @@ def process_borrow_return(student_id, student_name):
                 ''', (student_id, book_id, borrow_date))
                 cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = ?", (book_id,))
                 conn.commit()
-                # Jika judul lebih dari 16 karakter, lakukan scroll
+                # Tampilkan "Borrow Success" di line 1 dan judul buku di line 2 dengan scrolling
                 if len(title) > 16:
-                    scroll_text(1, f"Borrowed: {title}")
+                    display_lcd_message("Borrow Success")
+                    scroll_text(1, title)  # Scroll judul buku di baris kedua
                 else:
                     display_lcd_message("Borrow Success", title)
             elif status == 'dipinjam':
@@ -133,9 +131,10 @@ def process_borrow_return(student_id, student_name):
                 ''', (return_date, book_id, student_id))
                 cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = ?", (book_id,))
                 conn.commit()
-                # Jika judul lebih dari 16 karakter, lakukan scroll
+                # Tampilkan "Return Success" di line 1 dan judul buku di line 2 dengan scrolling
                 if len(title) > 16:
-                    scroll_text(1, f"Returned: {title}")
+                    display_lcd_message("Return Success")
+                    scroll_text(1, title)  # Scroll judul buku di baris kedua
                 else:
                     display_lcd_message("Return Success", title)
             else:
