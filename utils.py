@@ -1,13 +1,15 @@
-import firebase_admin
-from firebase_admin import credentials, firestore
+import mysql.connector
 
-# Initialize Firebase app
-cred = credentials.Certificate('/path/to/firebase-adminsdk.json')  # Replace with the path to your Firebase credential JSON file
-firebase_admin.initialize_app(cred)
-
-# Initialize Firestore
-db = firestore.client()
-
-def get_firestore_db():
-    """Return the Firestore database client."""
-    return db
+def connect_db():
+    """Connect to the MySQL database."""
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",  # MySQL server host
+            user="root",  # MySQL username
+            password="",  # MySQL password
+            database="library_db"  # The database you want to connect to
+        )
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
