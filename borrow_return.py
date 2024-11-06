@@ -1,8 +1,11 @@
 from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 import time
-from utils import get_firestore_db
+from utils import connect_db
 from RPLCD.i2c import CharLCD
+import os
+
+os.chdir('/home/bomi/smartlibrary')
 
 # Initialize LCD 16x2 with I2C (e.g., 0x27)
 lcd = CharLCD('PCF8574', 0x27)
@@ -28,21 +31,6 @@ def display_lcd_message(line1, line2=""):
     if line2:
         lcd.crlf()  # Move to line 2
         lcd.write_string(center_text(line2))
-
-def scroll_text(line, text, delay=0.3):
-    """Scroll text if it's longer than 16 characters."""
-    lcd.cursor_pos = (line, 0)
-    if len(text) <= 16:
-        lcd.write_string(text)
-        return
-
-    lcd.write_string(text[:16])
-    time.sleep(delay)
-
-    for i in range(1, len(text) - 15):
-        lcd.cursor_pos = (line, 0)
-        lcd.write_string(text[i:i + 16])
-        time.sleep(delay)
 
 def read_rfid_card():
     """Read RFID for student card and return UID."""
@@ -91,43 +79,38 @@ def process_borrow_return(student_id, student_name):
         display_lcd_message(f"Hi {student_name}", "Scan Book ID")
         rfid_code = reader.read()[0]
 
-        db = get_firestore_db()
+        conn = connect_db()
+        cursor = conn.cursor()
 
-        # Fetch book information
-        book_ref = db.collection('books').where('rfid_code', '==', rfid_code).limit(1).get()
-        if not book_ref:
-            display_lcd_message("Error", "Book Not Found")
-            return
+        # Check book availability in MySQL
+        cursor.execute("SELECT id, title, status FROM books WHERE rfid_code = %s", (rfid_code,))
+        book = cursor.fetchone()
 
-        book_doc = book_ref[0]
-        book_data = book_doc.to_dict()
-        book_id, title, status = book_doc.id, book_data['title'], book_data['status']
+        if book:
+            book_id, title, status = book
 
-        if status == 'tersedia':
-            # Borrow book
-            borrow_date = time.strftime("%Y-%m-%d %H:%M:%S")
-            db.collection('borrowed_books').add({
-                'student_id': student_id,
-                'book_id': book_id,
-                'borrow_date': borrow_date,
-                'return_date': None
-            })
-            db.collection('books').document(book_id).update({'status': 'dipinjam'})
-            display_lcd_message("Borrow Success")
-            scroll_text(1, title)
-        elif status == 'dipinjam':
-            # Return book
-            return_date = time.strftime("%Y-%m-%d %H:%M:%S")
-            borrowed_books_ref = db.collection('borrowed_books').where('book_id', '==', book_id).where('student_id', '==', student_id).where('return_date', '==', None).limit(1).get()
-            
-            if borrowed_books_ref:
-                borrowed_book_id = borrowed_books_ref[0].id
-                db.collection('borrowed_books').document(borrowed_book_id).update({'return_date': return_date})
-                db.collection('books').document(book_id).update({'status': 'tersedia'})
-                display_lcd_message("Return Success")
-                scroll_text(1, title)
+            if status == 'tersedia':
+                # Borrow book
+                borrow_date = time.strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("INSERT INTO borrowed_books (student_id, book_id, borrow_date) VALUES (%s, %s, %s)", 
+                               (student_id, book_id, borrow_date))
+                cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = %s", (book_id,))
+                conn.commit()
+                display_lcd_message("Borrow Success", title[:16])
+            elif status == 'dipinjam':
+                # Return book
+                return_date = time.strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("UPDATE borrowed_books SET return_date = %s WHERE book_id = %s AND student_id = %s AND return_date IS NULL", 
+                               (return_date, book_id, student_id))
+                cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = %s", (book_id,))
+                conn.commit()
+                display_lcd_message("Return Success", title[:16])
+            else:
+                display_lcd_message("Error", "Invalid Status")
         else:
-            display_lcd_message("Error", "Invalid Status")
+            display_lcd_message("Error", "Book Not Found")
+
+        conn.close()
 
     except Exception as e:
         print(f"Error during borrow/return process: {e}")
@@ -142,19 +125,18 @@ def borrow_return():
         display_lcd_message("Error", "No Card Detected")
         return
 
-    # Step 2: Look up student in Firestore
-    db = get_firestore_db()
-    student_ref = db.collection('students').where('rfid_code', '==', student_rfid).limit(1).get()
+    # Step 2: Look up student in MySQL
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name FROM students WHERE rfid_code = %s", (student_rfid,))
+    student = cursor.fetchone()
+    conn.close()
 
-    if not student_ref:
+    if not student:
         display_lcd_message("Error", "Student Not Found")
         return
 
-    student_doc = student_ref[0]
-    student_data = student_doc.to_dict()
-    student_id, student_name = student_doc.id, student_data['name']
-
-    print(f"Student verified: {student_name}")
+    student_id, student_name = student
     display_lcd_message("Student Verified", student_name)
 
     # Step 3: Wait until student card is removed
