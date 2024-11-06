@@ -1,7 +1,7 @@
 from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 import time
-from utils import get_firestore_db
+from utils import connect_db
 from RPLCD.i2c import CharLCD
 
 # Initialize LCD 16x2 with I2C (e.g., 0x27)
@@ -29,21 +29,6 @@ def display_lcd_message(line1, line2=""):
         lcd.crlf()  # Move to line 2
         lcd.write_string(center_text(line2))
 
-def scroll_text(line, text, delay=0.3):
-    """Scroll text if it's longer than 16 characters."""
-    lcd.cursor_pos = (line, 0)
-    if len(text) <= 16:
-        lcd.write_string(text)
-        return
-
-    lcd.write_string(text[:16])
-    time.sleep(delay)
-
-    for i in range(1, len(text) - 15):
-        lcd.cursor_pos = (line, 0)
-        lcd.write_string(text[i:i + 16])
-        time.sleep(delay)
-
 def register_student():
     """Register a new student by reading RFID card."""
     try:
@@ -58,12 +43,12 @@ def register_student():
         print(f"Registering student: {student_name}")
         display_lcd_message("Registering", "Student...")
 
-        # Add student to Firestore
-        db = get_firestore_db()
-        db.collection('students').add({
-            'rfid_code': student_rfid,
-            'name': student_name
-        })
+        # Add student to MySQL
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO students (rfid_code, name) VALUES (%s, %s)", (student_rfid, student_name))
+        conn.commit()
+        conn.close()
 
         print(f"Student {student_name} registered successfully.")
         display_lcd_message("Student Registered", student_name[:16])
@@ -88,21 +73,18 @@ def register_book():
         print(f"Registering book: {book_title}")
         display_lcd_message("Registering", "Book...")
 
-        # Add book to Firestore
-        db = get_firestore_db()
-        db.collection('books').add({
-            'rfid_code': book_rfid,
-            'title': book_title,
-            'author': book_author,
-            'status': 'tersedia'
-        })
+        # Add book to MySQL
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO books (rfid_code, title, author, status) VALUES (%s, %s, %s, 'tersedia')", 
+                       (book_rfid, book_title, book_author))
+        conn.commit()
+        conn.close()
 
         print(f"Book '{book_title}' by {book_author} registered successfully.")
         
         # Scroll title if longer than 16 characters
         if len(book_title) > 16:
-            scroll_text(1, f"Book: {book_title}")
-        else:
             display_lcd_message("Book Registered", book_title[:16])
 
     except Exception as e:
