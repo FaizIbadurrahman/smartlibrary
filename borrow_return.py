@@ -32,11 +32,11 @@ def process_borrow_return(student_id, student_name):
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, title, status FROM books WHERE rfid_code = %s", (book_rfid,))
+            cursor.execute("SELECT id, isbn, title, sinopsis, status FROM books WHERE rfid_code = %s", (book_rfid,))
             book = cursor.fetchone()
 
             if book:
-                book_id, title, status = book
+                book_id, isbn, title, synopsis, status = book
                 if status == 'tersedia':
                     # Borrow book
                     cursor.execute("INSERT INTO borrowed_books (student_id, book_id, borrow_date) VALUES (%s, %s, NOW())", 
@@ -74,7 +74,7 @@ def borrow_return():
     conn = connect_db()
     if conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM students WHERE rfid_code = %s", (student_rfid,))
+        cursor.execute("SELECT id, nama FROM students WHERE rfid_code = %s", (student_rfid,))
         student = cursor.fetchone()
         cursor.close()
         conn.close()
