@@ -4,7 +4,7 @@ import time
 from utils import connect_db
 from RPLCD.i2c import CharLCD
 
-# Initialize LCD 16x2 with I2C
+# Initialize LCD 16x2 with I2C (address may vary, e.g., 0x27)
 lcd = CharLCD('PCF8574', 0x27)
 reader = SimpleMFRC522()
 
@@ -16,83 +16,92 @@ def display_message(line1, line2=""):
         lcd.crlf()
         lcd.write_string(line2.center(16))
 
-def read_student_card():
-    """Reads the student's RFID card and returns the RFID code."""
-    print("Scan student RFID card")
-    display_message("Scan Student ID")
-    student_rfid, _ = reader.read()
-    return student_rfid
-
-def process_borrow_return(student_id, student_name):
-    """Processes borrowing or returning of a book."""
+def register_student():
+    """Registers a new student by scanning their RFID card."""
     try:
-        display_message(f"Hi {student_name}", "Scan Book ID")
-        book_rfid, _ = reader.read()
+        print("Scan the student RFID card")
+        display_message("Scan Student ID")
+        student_rfid, _ = reader.read()
+        
+        student_name = input("Enter student name: ")
+        student_class = input("Enter student class: ")
+        print(f"Registering student: {student_name}")
+        display_message("Registering", "Student...")
 
+        # Insert student data into MySQL database
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, isbn, title, sinopsis, status FROM books WHERE rfid_code = %s", (book_rfid,))
-            book = cursor.fetchone()
-
-            if book:
-                book_id, isbn, title, synopsis, status = book
-                if status == 'tersedia':
-                    # Borrow book
-                    cursor.execute("INSERT INTO borrowed_books (student_id, book_id, borrow_date) VALUES (%s, %s, NOW())", 
-                                   (student_id, book_id))
-                    cursor.execute("UPDATE books SET status = 'dipinjam' WHERE id = %s", (book_id,))
-                    conn.commit()
-                    display_message("Borrow Success", title[:16])
-                elif status == 'dipinjam':
-                    # Return book
-                    cursor.execute("UPDATE borrowed_books SET return_date = NOW() WHERE book_id = %s AND student_id = %s AND return_date IS NULL", 
-                                   (book_id, student_id))
-                    cursor.execute("UPDATE books SET status = 'tersedia' WHERE id = %s", (book_id,))
-                    conn.commit()
-                    display_message("Return Success", title[:16])
-                else:
-                    display_message("Error", "Invalid Status")
-            else:
-                display_message("Error", "Book Not Found")
-
+            cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", (student_rfid, student_name, student_class))
+            conn.commit()
             cursor.close()
             conn.close()
+            print(f"Student {student_name} registered successfully.")
+            display_message("Student Registered", student_name[:16])
         else:
             display_message("Error", "Database Unavailable")
 
     except Exception as e:
-        print(f"Error during borrow/return process: {e}")
-        display_message("Error", "Borrow/Return")
+        print(f"Error registering student: {e}")
+        display_message("Error", "Registration Failed")
     finally:
         GPIO.cleanup()
 
-def borrow_return():
-    """Main function to handle the borrow/return process."""
-    student_rfid = read_student_card()
-    
-    conn = connect_db()
-    if conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nama FROM students WHERE rfid_code = %s", (student_rfid,))
-        student = cursor.fetchone()
-        cursor.close()
-        conn.close()
+def register_book():
+    """Registers a new book by scanning its RFID tag."""
+    try:
+        print("Scan the book RFID tag")
+        display_message("Scan Book RFID")
+        book_rfid, _ = reader.read()
+        
+        book_isbn = input("Enter book ISBN: ")
+        book_title = input("Enter book title: ")
+        book_synopsis = input("Enter book synopsis: ")
+        book_image = input("Enter image URL: ")
 
-        if student:
-            student_id, student_name = student
-            display_message("Student Verified", student_name)
-            time.sleep(2)
-            process_borrow_return(student_id, student_name)
+        print(f"Registering book: {book_title}")
+        display_message("Registering", "Book...")
+
+        # Insert book data into MySQL database
+        conn = connect_db()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO buku (rfid, isbn, judul, sinopsis, gambar, status) VALUES (%s, %s, %s, %s, %s, 'tersedia')",
+                           (book_rfid, book_isbn, book_title, book_synopsis, book_image))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print(f"Book '{book_title}' registered successfully.")
+            display_message("Book Registered", book_title[:16])
         else:
-            display_message("Error", "Student Not Found")
-    else:
-        display_message("Error", "Database Unavailable")
+            display_message("Error", "Database Unavailable")
+
+    except Exception as e:
+        print(f"Error registering book: {e}")
+        display_message("Error", "Registration Failed")
+    finally:
+        GPIO.cleanup()
+
+def main():
+    """Main function to select registration mode."""
+    try:
+        while True:
+            print("\n1. Register Student")
+            print("2. Register Book")
+            choice = input("Choose an option (1 or 2): ")
+
+            if choice == '1':
+                register_student()
+            elif choice == '2':
+                register_book()
+            else:
+                print("Invalid choice. Please enter 1 or 2.")
+                display_message("Invalid", "Choice")
+
+            time.sleep(2)  # Pause before returning to the main menu
+
+    finally:
+        GPIO.cleanup()  # Clean up GPIO pins after program ends
 
 if __name__ == '__main__':
-    try:
-        while True:  # Continuous loop to handle new users
-            borrow_return()
-            time.sleep(2)
-    finally:
-        GPIO.cleanup()
+    main()
