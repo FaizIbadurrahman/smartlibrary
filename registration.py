@@ -4,93 +4,84 @@ import time
 from utils import connect_db
 from RPLCD.i2c import CharLCD
 
-# Initialize LCD 16x2 with I2C (e.g., 0x27)
+# Initialize LCD 16x2 with I2C (address may vary, e.g., 0x27)
 lcd = CharLCD('PCF8574', 0x27)
-
-# Initialize RFID Reader
 reader = SimpleMFRC522()
 
-def clear_lcd():
-    """Clear the LCD display."""
+def display_message(line1, line2=""):
+    """Displays a message on the LCD."""
     lcd.clear()
-
-def center_text(text, width=16):
-    """Center text for the LCD display."""
-    if len(text) < width:
-        padding = (width - len(text)) // 2
-        return ' ' * padding + text + ' ' * padding
-    return text[:width]  # Truncate text if it's longer than 16 characters
-
-def display_lcd_message(line1, line2=""):
-    """Display a message on the LCD with centered text."""
-    lcd.clear()  # Clear screen
-    lcd.write_string(center_text(line1))
+    lcd.write_string(line1.center(16))
     if line2:
-        lcd.crlf()  # Move to line 2
-        lcd.write_string(center_text(line2))
+        lcd.crlf()
+        lcd.write_string(line2.center(16))
 
 def register_student():
-    """Register a new student by reading RFID card."""
+    """Registers a new student by scanning their RFID card."""
     try:
-        print("Please scan your RFID card to register a new student.")
-        display_lcd_message("Scan Student ID")
-
-        # Read RFID for student card
-        student_rfid, text = reader.read()
-
-        # Prompt for student's name
+        print("Scan the student RFID card")
+        display_message("Scan Student ID")
+        student_rfid, _ = reader.read()  # Read the student's RFID card
+        
         student_name = input("Enter student name: ")
+        student_class = input("Enter student class: ")
         print(f"Registering student: {student_name}")
-        display_lcd_message("Registering", "Student...")
+        display_message("Registering", "Student...")
 
-        # Add student to MySQL
+        # Insert student data into MySQL database
         conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO students (rfid_code, name) VALUES (%s, %s)", (student_rfid, student_name))
-        conn.commit()
-        conn.close()
-
-        print(f"Student {student_name} registered successfully.")
-        display_lcd_message("Student Registered", student_name[:16])
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO students (rfid_code, nama, kelas) VALUES (%s, %s, %s)", (student_rfid, student_name, student_class))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print(f"Student {student_name} registered successfully.")
+            display_message("Student Registered", student_name[:16])
+        else:
+            display_message("Error", "Database Unavailable")
 
     except Exception as e:
         print(f"Error registering student: {e}")
-        display_lcd_message("Error", "Registration Failed")
+        display_message("Error", "Registration Failed")
+    finally:
+        GPIO.cleanup()
 
 def register_book():
-    """Register a new book by reading RFID tag."""
+    """Registers a new book by scanning its RFID tag."""
     try:
-        print("Please scan the book's RFID tag to register a new book.")
-        display_lcd_message("Scan Book RFID")
-
-        # Read RFID for book
-        book_rfid, text = reader.read()
-
-        # Prompt for book details
+        print("Scan the book RFID tag")
+        display_message("Scan Book RFID")
+        book_rfid, _ = reader.read()  # Read the book's RFID tag
+        
+        book_isbn = input("Enter book ISBN: ")
         book_title = input("Enter book title: ")
-        book_author = input("Enter book author: ")
+        book_synopsis = input("Enter book synopsis: ")
+        book_image = input("Enter image URL: ")
 
         print(f"Registering book: {book_title}")
-        display_lcd_message("Registering", "Book...")
+        display_message("Registering", "Book...")
 
-        # Add book to MySQL
+        # Insert book data into MySQL database
         conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO books (rfid_code, title, author, status) VALUES (%s, %s, %s, 'tersedia')", 
-                       (book_rfid, book_title, book_author))
-        conn.commit()
-        conn.close()
-
-        print(f"Book '{book_title}' by {book_author} registered successfully.")
-        
-        # Scroll title if longer than 16 characters
-        if len(book_title) > 16:
-            display_lcd_message("Book Registered", book_title[:16])
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO books (isbn, rfid_code, title, sinopsis, gambar, status) VALUES (%s, %s, %s, %s, %s, 'tersedia')",
+                           (book_isbn, book_rfid, book_title, book_synopsis, book_image))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print(f"Book '{book_title}' registered successfully.")
+            display_message("Book Registered", book_title[:16])
+        else:
+            display_message("Error", "Database Unavailable")
 
     except Exception as e:
         print(f"Error registering book: {e}")
-        display_lcd_message("Error", "Registration Failed")
-    
+        display_message("Error", "Registration Failed")
+    finally:
+        GPIO.cleanup()
+
 def main():
     """Main function to select registration mode."""
     try:
@@ -105,9 +96,9 @@ def main():
                 register_book()
             else:
                 print("Invalid choice. Please enter 1 or 2.")
-                display_lcd_message("Invalid", "Choice")
+                display_message("Invalid", "Choice")
 
-            time.sleep(2)  # Pause before returning to main menu
+            time.sleep(2)  # Pause before returning to the main menu
 
     finally:
         GPIO.cleanup()  # Clean up GPIO pins after program ends
