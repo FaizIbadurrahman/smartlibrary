@@ -7,7 +7,7 @@ def connect_db():
             host="srv1094.hstgr.io",
             user="u268211096_siswa",
             password="AlcentSiswa@4848",
-            database="elice"  # Replace with the correct database name if different
+            database="u268211096_siswa"  # Replace with the correct database name if different
         )
         print("Connected to MySQL Database")
         return conn
