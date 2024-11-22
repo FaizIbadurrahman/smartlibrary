@@ -51,38 +51,45 @@ def register_student():
     finally:
         GPIO.cleanup()
 
-
-def register_book():
-    """Registers a new book by scanning its RFID tag."""
+def register_student():
+    """Registers a new student by scanning their RFID card."""
     try:
-        print("Scan the book RFID tag")
-        display_message("Scan Book RFID")
-        book_rfid, _ = reader.read()
+        print("Scan the student RFID card")
+        display_message("Scan Student ID")
+        student_rfid, _ = reader.read()
+        
+        # Ensure RFID is treated as a string and strip any unwanted whitespace
+        student_rfid = str(student_rfid).strip()
 
-        book_isbn = input("Enter book ISBN: ")
-        book_title = input("Enter book title: ")
-        book_synopsis = input("Enter book synopsis: ")
-        book_image = input("Enter image URL: ")
+        # Check the format of the RFID code
+        if len(student_rfid) == 0:
+            print("Invalid RFID.")
+            display_message("Invalid RFID", "Try Again.")
+            return
 
-        print(f"Registering book: {book_title}")
-        display_message("Registering", "Book...")
+        # Ask for the student name and class
+        student_name = input("Enter student name: ")
+        student_class = input("Enter student class: ")
+        print(f"Registering student: {student_name}")
+        display_message("Registering", "Student...")
 
-        # Insert book data into MySQL database
+        # Insert student data into MySQL database
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO buku (rfid, isbn, judul, sinopsis, gambar, status) VALUES (%s, %s, %s, %s, %s, 'tersedia')",
-                           (book_rfid, book_isbn, book_title, book_synopsis, book_image))
+            
+            # Ensure the table has the correct column types: 'rfid' should be VARCHAR
+            cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", (student_rfid, student_name, student_class))
             conn.commit()
             cursor.close()
             conn.close()
-            print(f"Book '{book_title}' registered successfully.")
-            display_message("Book Registered", book_title[:16])
+            print(f"Student {student_name} registered successfully.")
+            display_message("Student Registered", student_name[:16])
         else:
             display_message("Error", "Database Unavailable")
 
     except Exception as e:
-        print(f"Error registering book: {e}")
+        print(f"Error registering student: {e}")
         display_message("Error", "Registration Failed")
     finally:
         GPIO.cleanup()
