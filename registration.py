@@ -22,19 +22,17 @@ def register_student():
         print("Scan the student RFID card")
         display_message("Scan Student ID")
         student_rfid, _ = reader.read()
-        student_rfid = str(student_rfid).strip()  # Ensure RFID is a string and trimmed
-        print(f"DEBUG: Scanned RFID for registration: '{student_rfid}'")  # Debug output
-
+        
         student_name = input("Enter student name: ")
         student_class = input("Enter student class: ")
         print(f"Registering student: {student_name}")
         display_message("Registering", "Student...")
 
+        # Insert student data into MySQL database
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", 
-                           (student_rfid, student_name, student_class))
+            cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", (student_rfid, student_name, student_class))
             conn.commit()
             cursor.close()
             conn.close()
@@ -55,9 +53,7 @@ def register_book():
         print("Scan the book RFID tag")
         display_message("Scan Book RFID")
         book_rfid, _ = reader.read()
-        book_rfid = str(book_rfid).strip()  # Ensure RFID is a string and trimmed
-        print(f"DEBUG: Scanned Book RFID for registration: '{book_rfid}'")  # Debug output
-
+        
         book_isbn = input("Enter book ISBN: ")
         book_title = input("Enter book title: ")
         book_synopsis = input("Enter book synopsis: ")
@@ -66,6 +62,7 @@ def register_book():
         print(f"Registering book: {book_title}")
         display_message("Registering", "Book...")
 
+        # Insert book data into MySQL database
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
