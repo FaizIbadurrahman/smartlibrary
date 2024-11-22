@@ -51,6 +51,14 @@ def register_student():
     finally:
         GPIO.cleanup()
 
+def display_message(line1, line2=""):
+    """Displays a message on the LCD."""
+    lcd.clear()
+    lcd.write_string(line1.center(16))
+    if line2:
+        lcd.crlf()
+        lcd.write_string(line2.center(16))
+
 def register_student():
     """Registers a new student by scanning their RFID card."""
     try:
@@ -61,7 +69,7 @@ def register_student():
         # Ensure RFID is treated as a string and strip any unwanted whitespace
         student_rfid = str(student_rfid).strip()
 
-        # Check the format of the RFID code
+        # Check if the RFID is empty
         if len(student_rfid) == 0:
             print("Invalid RFID.")
             display_message("Invalid RFID", "Try Again.")
@@ -78,7 +86,7 @@ def register_student():
         if conn:
             cursor = conn.cursor()
             
-            # Ensure the table has the correct column types: 'rfid' should be VARCHAR
+            # Insert into the 'siswa' table with 'rfid' as a VARCHAR
             cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", (student_rfid, student_name, student_class))
             conn.commit()
             cursor.close()
@@ -93,6 +101,17 @@ def register_student():
         display_message("Error", "Registration Failed")
     finally:
         GPIO.cleanup()
+
+def main():
+    """Main function to run the student registration."""
+    try:
+        register_student()
+    finally:
+        GPIO.cleanup()  # Clean up GPIO pins after program ends
+
+if __name__ == '__main__':
+    main()
+
 
 def main():
     """Main function to select registration mode."""
