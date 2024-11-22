@@ -65,23 +65,31 @@ def register_book():
     """Registers a new book by scanning its RFID tag."""
     try:
         # Scan RFID
-        book_rfid = read_rfid()
+        book_rfid = read_rfid()  # Reuse the read_rfid function for consistent handling
 
         # Input book details
         book_isbn = input("Enter book ISBN: ")
         book_title = input("Enter book title: ")
         book_synopsis = input("Enter book synopsis: ")
-        book_image = input("Enter image URL: ")
+        book_image = input("Enter image URL (optional, press Enter to skip): ")
 
-        print(f"DEBUG: Registering book: {book_title} with RFID: {book_rfid}")
+        # Validate that the user provided essential inputs
+        if not book_isbn or not book_title:
+            print("ERROR: ISBN and Title are required.")
+            display_message("Error", "ISBN/Title Missing")
+            return
+
+        print(f"DEBUG: Registering book: '{book_title}' with RFID: '{book_rfid}'")
         display_message("Registering", "Book...")
 
         # Insert book data into MySQL database
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO buku (rfid, isbn, judul, sinopsis, gambar, status) VALUES (%s, %s, %s, %s, %s, 'tersedia')",
-                           (book_rfid, book_isbn, book_title, book_synopsis, book_image))
+            cursor.execute("""
+                INSERT INTO buku (rfid, isbn, judul, sinopsis, gambar, status) 
+                VALUES (%s, %s, %s, %s, %s, 'tersedia')
+            """, (book_rfid, book_isbn, book_title, book_synopsis, book_image))
             conn.commit()
             cursor.close()
             conn.close()
@@ -93,6 +101,7 @@ def register_book():
     except Exception as e:
         print(f"Error registering book: {e}")
         display_message("Error", "Registration Failed")
+
 
 def main():
     """Main function to select registration mode."""
