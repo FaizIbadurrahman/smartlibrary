@@ -5,7 +5,7 @@ from utils import connect_db
 from RPLCD.i2c import CharLCD
 from datetime import datetime, timedelta
 
-# Initialize LCD 16x2 with I2C
+# Initialize LCD 16x2 with I2C (address may vary, e.g., 0x27)
 lcd = CharLCD('PCF8574', 0x27)
 reader = SimpleMFRC522()
 
@@ -35,7 +35,9 @@ def read_student_card():
     print("Scan student RFID card")
     display_message("Scan Student ID")
     student_rfid, _ = reader.read()
-    student_rfid = str(student_rfid).strip()  # Ensure RFID is a string and trimmed
+
+    # Convert RFID to string and strip any leading/trailing whitespace
+    student_rfid = str(student_rfid).strip()
     print(f"DEBUG: Scanned RFID: '{student_rfid}'")  # Debug output
     return student_rfid
 
@@ -58,20 +60,18 @@ def process_borrow_return(student_id, student_name):
                 if status == 'tersedia':
                     # Borrow book
                     return_date = datetime.now() + timedelta(weeks=2)
-                    cursor.execute("""
-                        INSERT INTO buku_pinjam (judul, isbn, rfid_siswa, rfid_buku, nama, tanggal_kembali, gambar, status)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, 'dipinjam')
-                    """, (title, isbn, student_id, book_rfid, student_name, return_date, image))
+                    cursor.execute("""INSERT INTO buku_pinjam (judul, isbn, rfid_siswa, rfid_buku, nama, tanggal_kembali, gambar, status)
+                                      VALUES (%s, %s, %s, %s, %s, %s, %s, 'dipinjam')""",
+                                      (title, isbn, student_id, book_rfid, student_name, return_date, image))
                     cursor.execute("UPDATE buku SET status = 'dipinjam' WHERE rfid = %s", (book_rfid,))
                     conn.commit()
                     display_message("Borrow Success", title[:16])
                 elif status == 'dipinjam':
                     # Return book
-                    cursor.execute("""
-                        UPDATE buku_pinjam
-                        SET status = 'sudah dikembalikan', tanggal_kembali = NOW()
-                        WHERE rfid_buku = %s AND rfid_siswa = %s AND status = 'dipinjam'
-                    """, (book_rfid, student_id))
+                    cursor.execute("""UPDATE buku_pinjam
+                                      SET status = 'sudah dikembalikan', tanggal_kembali = NOW()
+                                      WHERE rfid_buku = %s AND rfid_siswa = %s AND status = 'dipinjam'""",
+                                      (book_rfid, student_id))
                     cursor.execute("UPDATE buku SET status = 'tersedia' WHERE rfid = %s", (book_rfid,))
                     conn.commit()
                     display_message("Return Success", title[:16])
@@ -99,11 +99,11 @@ def borrow_return():
     # Wait for card removal
     wait_until_card_removed()
 
-    
     if conn:
         cursor = conn.cursor()
         cursor.execute("SELECT rfid, nama FROM siswa WHERE rfid = %s", (student_rfid,))
         student = cursor.fetchone()
+        print(f"DEBUG: Student fetched: {student}")  # Debugging the result of the query
         cursor.close()
         conn.close()
 
