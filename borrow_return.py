@@ -93,12 +93,13 @@ def process_borrow_return(student_id, student_name):
 
 def borrow_return():
     """Main function to handle the borrow/return process."""
+    conn = connect_db()
     student_rfid = read_student_card()
 
     # Wait for card removal
     wait_until_card_removed()
 
-    conn = connect_db()
+    
     if conn:
         cursor = conn.cursor()
         cursor.execute("SELECT rfid, nama FROM siswa WHERE rfid = %s", (student_rfid,))
