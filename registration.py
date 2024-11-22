@@ -22,7 +22,10 @@ def register_student():
         print("Scan the student RFID card")
         display_message("Scan Student ID")
         student_rfid, _ = reader.read()
-        
+
+        # Convert RFID to string and strip any leading/trailing whitespace
+        student_rfid = str(student_rfid).strip()
+
         student_name = input("Enter student name: ")
         student_class = input("Enter student class: ")
         print(f"Registering student: {student_name}")
@@ -53,7 +56,7 @@ def register_book():
         print("Scan the book RFID tag")
         display_message("Scan Book RFID")
         book_rfid, _ = reader.read()
-        
+
         book_isbn = input("Enter book ISBN: ")
         book_title = input("Enter book title: ")
         book_synopsis = input("Enter book synopsis: ")
