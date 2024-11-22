@@ -23,7 +23,7 @@ def read_student_card():
     display_message("Scan Student ID")
     student_rfid, _ = reader.read()
     student_rfid = str(student_rfid).strip()  # Ensure RFID is a string and trimmed
-    print(f"Scanned RFID: {student_rfid}")  # Debug
+    print(f"DEBUG: Scanned RFID: '{student_rfid}'")  # Debug output
     return student_rfid
 
 def process_borrow_return(student_id, student_name):
@@ -32,7 +32,7 @@ def process_borrow_return(student_id, student_name):
         display_message(f"Hi {student_name}", "Scan Book ID")
         book_rfid, _ = reader.read()
         book_rfid = str(book_rfid).strip()  # Ensure RFID is a string and trimmed
-        print(f"Scanned Book RFID: {book_rfid}")  # Debug
+        print(f"DEBUG: Scanned Book RFID: '{book_rfid}'")  # Debug output
 
         conn = connect_db()
         if conn:
