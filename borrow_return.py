@@ -22,7 +22,7 @@ def read_student_card():
     print("Scan student RFID card")
     display_message("Scan Student ID")
     student_rfid, _ = reader.read()
-    student_rfid = student_rfid.strip()  # Trim spaces to ensure consistency
+    student_rfid = str(student_rfid).strip()  # Ensure RFID is a string and trimmed
     print(f"Scanned RFID: {student_rfid}")  # Debug
     return student_rfid
 
@@ -31,7 +31,7 @@ def process_borrow_return(student_id, student_name):
     try:
         display_message(f"Hi {student_name}", "Scan Book ID")
         book_rfid, _ = reader.read()
-        book_rfid = book_rfid.strip()  # Trim spaces
+        book_rfid = str(book_rfid).strip()  # Ensure RFID is a string and trimmed
         print(f"Scanned Book RFID: {book_rfid}")  # Debug
 
         conn = connect_db()
