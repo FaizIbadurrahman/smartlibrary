@@ -25,6 +25,7 @@ def register_student():
 
         # Convert RFID to string and strip any leading/trailing whitespace
         student_rfid = str(student_rfid).strip()
+        print(f"DEBUG: Scanned student RFID: {student_rfid}")  # Debugging the scanned RFID
 
         student_name = input("Enter student name: ")
         student_class = input("Enter student class: ")
@@ -44,6 +45,11 @@ def register_student():
         else:
             display_message("Error", "Database Unavailable")
 
+    except Exception as e:
+        print(f"Error registering student: {e}")
+        display_message("Error", "Registration Failed")
+    finally:
+        GPIO.cleanup()
     except Exception as e:
         print(f"Error registering student: {e}")
         display_message("Error", "Registration Failed")
