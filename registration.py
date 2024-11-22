@@ -50,11 +50,7 @@ def register_student():
         display_message("Error", "Registration Failed")
     finally:
         GPIO.cleanup()
-    except Exception as e:
-        print(f"Error registering student: {e}")
-        display_message("Error", "Registration Failed")
-    finally:
-        GPIO.cleanup()
+
 
 def register_book():
     """Registers a new book by scanning its RFID tag."""
