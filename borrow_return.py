@@ -96,6 +96,9 @@ def borrow_return():
     conn = connect_db()
     student_rfid = read_student_card()
 
+    # Print the RFID being scanned
+    print(f"DEBUG: Scanned student RFID: {student_rfid}")
+
     # Wait for card removal
     wait_until_card_removed()
 
