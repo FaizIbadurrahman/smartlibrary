@@ -97,16 +97,29 @@ def borrow_return():
     student_rfid = read_student_card()
 
     # Print the RFID being scanned
-    print(f"DEBUG: Scanned student RFID: {student_rfid}")
+    print(f"DEBUG: Scanned student RFID: '{student_rfid}'")
+
+    # Strip any extra spaces or characters from the RFID value
+    student_rfid = str(student_rfid).strip()
+    print(f"DEBUG: Cleaned student RFID: '{student_rfid}'")  # Print cleaned RFID
 
     # Wait for card removal
     wait_until_card_removed()
 
     if conn:
         cursor = conn.cursor()
+
+        # Print the RFID being sent to the query
+        print(f"DEBUG: Querying student with RFID: '{student_rfid}'")
         cursor.execute("SELECT rfid, nama FROM siswa WHERE rfid = %s", (student_rfid,))
         student = cursor.fetchone()
-        print(f"DEBUG: Student fetched: {student}")  # Debugging the result of the query
+
+        # Debug: check if student is fetched or not
+        if student:
+            print(f"DEBUG: Student found: {student}")
+        else:
+            print(f"DEBUG: No student found for RFID: '{student_rfid}'")  # Detailed debug message
+
         cursor.close()
         conn.close()
 
@@ -119,6 +132,7 @@ def borrow_return():
             display_message("Error", "Student Not Found")
     else:
         display_message("Error", "Database Unavailable")
+
 
 if __name__ == '__main__':
     try:
