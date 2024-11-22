@@ -22,6 +22,7 @@ def register_student():
         print("Scan the student RFID card")
         display_message("Scan Student ID")
         student_rfid, _ = reader.read()
+        student_rfid = student_rfid.strip()  # Trim spaces to ensure consistency
         
         student_name = input("Enter student name: ")
         student_class = input("Enter student class: ")
@@ -32,8 +33,9 @@ def register_student():
         conn = connect_db()
         if conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", (student_rfid, student_name, student_class))
-            conn.commit()
+            cursor.execute("INSERT INTO siswa (rfid, nama, kelas) VALUES (%s, %s, %s)", 
+                           (student_rfid, student_name, student_class))
+            conn.commit()  # Ensure data is saved
             cursor.close()
             conn.close()
             print(f"Student {student_name} registered successfully.")
@@ -53,6 +55,7 @@ def register_book():
         print("Scan the book RFID tag")
         display_message("Scan Book RFID")
         book_rfid, _ = reader.read()
+        book_rfid = book_rfid.strip()  # Trim spaces to ensure consistency
         
         book_isbn = input("Enter book ISBN: ")
         book_title = input("Enter book title: ")
@@ -68,7 +71,7 @@ def register_book():
             cursor = conn.cursor()
             cursor.execute("INSERT INTO buku (rfid, isbn, judul, sinopsis, gambar, status) VALUES (%s, %s, %s, %s, %s, 'tersedia')",
                            (book_rfid, book_isbn, book_title, book_synopsis, book_image))
-            conn.commit()
+            conn.commit()  # Ensure data is saved
             cursor.close()
             conn.close()
             print(f"Book '{book_title}' registered successfully.")
