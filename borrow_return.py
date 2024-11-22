@@ -17,11 +17,26 @@ def display_message(line1, line2=""):
         lcd.crlf()
         lcd.write_string(line2.center(16))
 
+def wait_until_card_removed():
+    """Waits until the RFID card is removed."""
+    print("Waiting for card removal...")
+    display_message("Remove Card", "Please Wait")
+    
+    while True:
+        rfid_code, _ = reader.read_no_block()  # Non-blocking read
+        if rfid_code is None:
+            print("Card removed.")
+            display_message("Card Removed", "")
+            break
+        time.sleep(0.5)  # Short delay to reduce CPU usage
+
 def read_student_card():
     """Reads the student's RFID card and returns the RFID code."""
     print("Scan student RFID card")
     display_message("Scan Student ID")
     student_rfid, _ = reader.read()
+    student_rfid = str(student_rfid).strip()  # Ensure RFID is a string and trimmed
+    print(f"DEBUG: Scanned RFID: '{student_rfid}'")  # Debug output
     return student_rfid
 
 def process_borrow_return(student_id, student_name):
@@ -29,6 +44,8 @@ def process_borrow_return(student_id, student_name):
     try:
         display_message(f"Hi {student_name}", "Scan Book ID")
         book_rfid, _ = reader.read()
+        book_rfid = str(book_rfid).strip()  # Ensure RFID is a string and trimmed
+        print(f"DEBUG: Scanned Book RFID: '{book_rfid}'")  # Debug output
 
         conn = connect_db()
         if conn:
@@ -77,7 +94,10 @@ def process_borrow_return(student_id, student_name):
 def borrow_return():
     """Main function to handle the borrow/return process."""
     student_rfid = read_student_card()
-    
+
+    # Wait for card removal
+    wait_until_card_removed()
+
     conn = connect_db()
     if conn:
         cursor = conn.cursor()
@@ -100,6 +120,6 @@ if __name__ == '__main__':
     try:
         while True:  # Continuous loop to handle new users
             borrow_return()
-            time.sleep(2)
+            time.sleep(2)  # Allow a short delay before processing the next user
     finally:
         GPIO.cleanup()
