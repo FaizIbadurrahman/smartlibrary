@@ -4,10 +4,10 @@ def connect_db():
     """Establish a connection to the MySQL database."""
     try:
         conn = mysql.connector.connect(
-            host="srv1094.hstgr.io",  # Replace with your database host
-            user="u268211096_siswa",  # Replace with your database username
-            password="AlcentSiswa@4848",  # Replace with your database password
-            database="library_db"  # Replace with your database name
+            host="srv1094.hstgr.io",
+            user="u268211096_siswa",
+            password="AlcentSiswa@4848",
+            database="u268211096_siswa"  # Replace with the correct database name if different
         )
         return conn
     except mysql.connector.Error as e:
