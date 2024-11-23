@@ -42,7 +42,6 @@ def read_student_card():
     return student_rfid
 
 
-
 def process_borrow_return(student_id, student_name):
     """Processes borrowing or returning of a book."""
     try:
@@ -74,12 +73,10 @@ def process_borrow_return(student_id, student_name):
 
                 elif status == 'dipinjam':
                     # Return book
-                    return_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  # Current date and time
                     cursor.execute("""
-                        UPDATE buku_pinjam
-                        SET status = %s, tanggal_kembali = %s
+                        DELETE FROM buku_pinjam
                         WHERE rfid_buku = %s AND rfid_siswa = %s AND status = 'dipinjam'
-                    """, (f"dikembalikkan pada {return_date}", return_date, book_rfid, student_id))
+                    """, (book_rfid, student_id))
                     cursor.execute("UPDATE buku SET status = 'tersedia' WHERE rfid = %s", (book_rfid,))
                     conn.commit()
                     print(f"Book '{title}' returned successfully.")
@@ -99,7 +96,6 @@ def process_borrow_return(student_id, student_name):
     except Exception as e:
         print(f"Error during borrow/return process: {e}")
         display_message("Error", "Borrow/Return")
-
 
 
 def borrow_return():
